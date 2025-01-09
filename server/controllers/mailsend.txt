@@ -1,0 +1,653 @@
+const express = require("express");
+const cors = require("cors");
+const nodeMailer = require("nodemailer");
+const { resolve } = require("path");
+const { rejects } = require("assert");
+const app = express();
+const port = 3000;
+
+
+app.use(cors());
+app.use(express.json({limit: '50mb'}));
+app.use(express.urlencoded({limit: '50mb'}));
+
+app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    next();
+
+});
+
+function sendEmail(email,subject,message){
+    return new Promise((resolve,reject)  =>{
+        var transporter = nodeMailer.createTransport({
+            service: "gmail",
+            auth: { 
+                user: "harshalbisen712@gmail.com",
+                pass: "tqqp ecnx cahu bef"       
+            }
+        });
+        const mail_config ={
+            from: "harshalbisen712@gmail.com",
+            to: email,
+            subject: subject,
+            text: message,
+
+        };
+
+
+
+        transporter.sendMail(mail_config, function(error,info){
+            if(error){
+                console.log(error);
+                return reject({message: "Failed to send email"});
+
+   }
+   return resolve({message: "Email sent successfully"});
+        })
+
+
+    })
+}
+
+
+
+app.get("/", (req, res) => {
+     sendEmail(req.query)
+     .then((response) => response.send(response.message))
+        .catch((error) => res.status(500).send(error.message));
+
+});
+app.listen(port, () => {
+    console.log(`Server is running on port ${port}`);
+})
+
+========================================================================================
+
+import multer from "multer";
+import Employee from "../models/Employee.js";
+import User from "../models/User.js";
+import bcrypt from "bcrypt";
+import path from "path";
+import Department from "../models/Department.js";
+import nodemailer from "nodemailer";
+
+// Check email configuration
+if (!process.env.EMAIL_USER || !process.env.EMAIL_PASSWORD) {
+  console.error("Email configuration missing. Please check your environment variables.");
+}
+
+// Multer configuration
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "public/uploads");
+  },
+  filename: (req, file, cb) => {
+    cb(null, Date.now() + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({ storage: storage });
+
+// Email configuration
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: false
+  }
+});
+console.log(process.env.EMAIL_USER, process.env.EMAIL_PASSWORD)
+// Verify email transport
+transporter.verify(function (error, success) {
+  if (error) {
+    console.log("SMTP connection error:", error);
+  } else {
+    console.log("Server is ready to send emails");
+  }
+});
+
+// Email sending function
+const sendWelcomeEmail = async (email, password, name) => {
+  if (!email || !password || !name) {
+    return {
+      success: false,
+      error: "Missing required parameters for email"
+    };
+  }
+console.log(email, password, name)
+  try {
+    const mailConfig = {
+      from: `"HR Team" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: "Welcome to Our Company - Your Login Credentials",
+      html: `
+                <h2>Hello ${name}</h2>
+                <p>Welcome to our company! Your account has been created successfully.</p>
+                <p><strong>Login Credentials:</strong><br>
+                Email: ${email}<br>
+                Password: ${password}</p>
+                <p><em>Please change your password after your first login for security purposes.</em></p>
+                <br>
+                <p>Best regards,<br>HR Team</p>
+            `,
+      text: `
+                Hello ${name},
+
+                Welcome to our company! Your account has been created successfully.
+
+                Login Credentials:
+                Email: ${email}
+                Password: ${password}
+
+                Please change your password after your first login for security purposes.
+
+                Best regards,
+                HR Team
+            `
+    };
+
+    const info = await transporter.sendMail(mailConfig);
+    console.log("Welcome email sent successfully. MessageID:", info.messageId);
+    return { success: true, messageId: info.messageId };
+  } catch (error) {
+    console.error('Email sending error:', {
+      message: error.message,
+      code: error.code,
+      command: error.command
+    });
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+const addEmployee = async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      employeeId,
+      dob,
+      gender,
+      maritalStatus,
+      designation,
+      department,
+      salary,
+      password,
+      role,
+    } = req.body;
+
+    // Validate email
+    if (!email || typeof email !== 'string') {
+      return res.status(400).json({
+        success: false,
+        error: "Valid email address is required"
+      });
+    }
+
+    // Check if user already exists
+    const user = await User.findOne({ email });
+    if (user) {
+      return res.status(400).json({
+        success: false,
+        error: "User already registered"
+      });
+    }
+
+    const hashPassword = await bcrypt.hash(password, 10);
+
+    // Create new user
+    const newUser = new User({
+      name,
+      email,
+      password: hashPassword,
+      role,
+      profileImage: req.file ? req.file.filename : "",
+    });
+    const savedUser = await newUser.save();
+
+    // Create new employee
+    const newEmployee = new Employee({
+      userId: savedUser._id,
+      employeeId,
+      dob,
+      gender,
+      maritalStatus,
+      designation,
+      department,
+      salary,
+    });
+
+    await newEmployee.save();
+
+    // Send welcome email
+    const emailResult = await sendWelcomeEmail(email, password, name);
+
+    if (!emailResult.success) {
+      console.error("Email sending failed:", emailResult.error);
+      return res.status(201).json({
+        success: true,
+        message: "Employee created successfully",
+        warning: "Welcome email could not be sent",
+        emailError: emailResult.error
+      });
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: "Employee created and welcome email sent successfully"
+    });
+
+  } catch (error) {
+    console.error("Error in addEmployee:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error while adding employee"
+    });
+  }
+};
+
+const getEmployees = async (req, res) => {
+  try {
+    const employees = await Employee.find()
+      .populate("userId", { password: 0 })
+      .populate("department");
+    return res.status(200).json({ success: true, employees });
+  } catch (error) {
+    console.error("Error in getEmployees:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error while fetching employees"
+    });
+  }
+};
+
+const getEmployee = async (req, res) => {
+  const { id } = req.params;
+  try {
+    let employee = await Employee.findById(id)
+      .populate("userId", { password: 0 })
+      .populate("department");
+
+    if (!employee) {
+      employee = await Employee.findOne({ userId: id })
+        .populate("userId", { password: 0 })
+        .populate("department");
+
+      if (!employee) {
+        return res.status(404).json({
+          success: false,
+          error: "Employee not found"
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, employee });
+  } catch (error) {
+    console.error("Error in getEmployee:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error while fetching employee"
+    });
+  }
+};
+
+const updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, maritalStatus, designation, department, salary } = req.body;
+
+    const employee = await Employee.findById(id);
+    if (!employee) {
+      return res.status(404).json({
+        success: false,
+        error: "Employee not found"
+      });
+    }
+
+    const user = await User.findById(employee.userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found"
+      });
+    }
+
+    const [updateUser, updateEmployee] = await Promise.all([
+      User.findByIdAndUpdate(employee.userId, { name }, { new: true }),
+      Employee.findByIdAndUpdate(id, {
+        maritalStatus,
+        designation,
+        salary,
+        department
+      }, { new: true })
+    ]);
+
+    if (!updateEmployee || !updateUser) {
+      return res.status(404).json({
+        success: false,
+        error: "Failed to update employee information"
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Employee updated successfully"
+    });
+
+  } catch (error) {
+    console.error("Error in updateEmployee:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error while updating employee"
+    });
+  }
+};
+
+const fetchEmployeesByDepId = async (req, res) => {
+  const { id } = req.params;
+  try {
+    const employees = await Employee.find({ department: id })
+      .populate("userId", { password: 0 })
+      .populate("department");
+
+    return res.status(200).json({ success: true, employees });
+  } catch (error) {
+    console.error("Error in fetchEmployeesByDepId:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Server error while fetching employees by department"
+    });
+  }
+};
+
+export {
+  addEmployee,
+  upload,
+  getEmployees,
+  getEmployee,
+  updateEmployee,
+  fetchEmployeesByDepId
+};
+
+===================================================================
+import React, { useEffect, useState } from "react";
+import { fetchDepartments } from "../../utils/EmployeeHelper";
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from 'react-toastify'; // Add this import for notifications
+
+const Add = () => {
+  const [departments, setDepartments] = useState([]);
+  const [formData, setFormData] = useState({});
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const getDepartments = async () => {
+      const departments = await fetchDepartments();
+      setDepartments(departments);
+    };
+    getDepartments();
+  }, []);
+
+  const handleChange = (e) => {
+    const { name, value, files } = e.target;
+    if (name === "image") {
+      setFormData((prevData) => ({ ...prevData, [name]: files[0] }));
+    } else {
+      setFormData((prevData) => ({ ...prevData, [name]: value }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const formDataObj = new FormData();
+    Object.keys(formData).forEach((key) => {
+      formDataObj.append(key, formData[key]);
+    });
+
+    try {
+      const response = await axios.post(
+        "http://localhost:5000/api/employee/add",
+        formDataObj,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+      if (response.data.success) {
+        // Handle success with warning if email wasn't sent
+        if (response.data.warning) {
+          toast.warn(response.data.warning);
+        } else {
+          toast.success(response.data.message);
+        }
+        navigate("/admin-dashboard/employees");
+      }
+    } catch (error) {
+      if (error.response && !error.response.data.success) {
+        toast.error(error.response.data.error);
+      }
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 py-8">
+      <div className="max-w-4xl mx-auto bg-gray-800 p-8 rounded-lg shadow-xl">
+        <h2 className="text-2xl font-bold mb-6 text-white">Add New Employee</h2>
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Name
+              </label>
+              <input        
+                type="text"
+                name="name"
+                onChange={handleChange}
+                placeholder="Insert Name"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Email
+              </label>
+              <input
+                type="email"
+                name="email"
+                onChange={handleChange}
+                placeholder="Insert Email"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Rest of the form fields remain exactly the same */}
+            {/* Employee ID */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Employee ID
+              </label>
+              <input
+                type="text"
+                name="employeeId"
+                onChange={handleChange}
+                placeholder="Employee ID"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Date of Birth */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                name="dob"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Gender
+              </label>
+              <select
+                name="gender"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              >
+                <option value="">Select Gender</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Marital Status */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Marital Status
+              </label>
+              <select
+                name="maritalStatus"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              >
+                <option value="">Select Status</option>
+                <option value="single">Single</option>
+                <option value="married">Married</option>
+              </select>
+            </div>
+
+            {/* Designation */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Designation
+              </label>
+              <input
+                type="text"
+                name="designation"
+                onChange={handleChange}
+                placeholder="Designation"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Department */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Department
+              </label>
+              <select
+                name="department"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              >
+                <option value="">Select Department</option>
+                {departments.map((dep) => (
+                  <option key={dep._id} value={dep._id}>
+                    {dep.dep_name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Salary */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Salary
+              </label>
+              <input
+                type="number"
+                name="salary"
+                onChange={handleChange}
+                placeholder="Salary"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Password
+              </label>
+              <input
+                type="password"
+                name="password"
+                placeholder="******"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              />
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Role
+              </label>
+              <select
+                name="role"
+                onChange={handleChange}
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                required
+              >
+                <option value="">Select Role</option>
+                <option value="admin">Admin</option>
+                <option value="employee">Employee</option>
+              </select>
+            </div>
+
+            {/* Image Upload */}
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-1">
+                Upload Image
+              </label>
+              <input
+                type="file"
+                name="image"
+                onChange={handleChange}
+                accept="image/*"
+                className="w-full p-2.5 bg-gray-900 border border-gray-700 rounded-lg text-white file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-600 file:text-white hover:file:bg-purple-500"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            className="w-full mt-8 bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 px-4 rounded-lg transition-colors duration-200"
+          >
+            Add Employee
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default Add;
