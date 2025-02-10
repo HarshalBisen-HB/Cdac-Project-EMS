@@ -1,6 +1,6 @@
 import React from 'react';
 import { useAuth } from '../context/authContext';
-import AdminSidebar from '../components/dashboard/AdminSidebar';
+import AdminSidebar from '../components/dashboard/AdminSIdebar';
 import Navbar from '../components/dashboard/Navbar';
 import { Outlet } from 'react-router-dom';
 import { ToastContainer} from 'react-toastify';
