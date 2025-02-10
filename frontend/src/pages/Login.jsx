@@ -1,14 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAuth } from "../context/authContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Player } from '@lottiefiles/react-lottie-player';
+import animationData from "../assets/login.json";
+import slide1Animation from "../assets/management.json";
+import slide2Animation from "../assets/salary.json";
+import slide3Animation from "../assets/leave.json";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
+  const [currentSlide, setCurrentSlide] = useState(0);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const slides = [
+    {
+      title: "Empower Your Team with Our Employee Portal",
+      description: "Efficiently manage employee profiles, track performance, and maintain up-to-date records. Our intuitive interface ensures your HR team stays organized and productive.",
+      animation: slide1Animation
+    },
+    {
+      title: "Accurate Salary Management",
+      description: "Manage payroll, deductions, and salary disbursements with precision. Our system ensures timely and accurate salary processing.",
+      animation: slide2Animation
+    },
+    {
+      title: "Efficient Leave Management",
+      description: "Easily manage employee leave requests, approvals, and balances. Ensure smooth operations with real-time leave tracking.",
+      animation: slide3Animation
+    }
+  ];
+
+  useEffect(() => {
+    const slideInterval = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000); // Change slide every 5 seconds
+
+    return () => clearInterval(slideInterval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,31 +67,64 @@ const Login = () => {
     }
   };
 
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
   return (
     <div className="min-h-screen flex bg-[#111827]">
-      {/* Left Side - Hero Section */}
+      {/* Left Side - Sliding Hero Section */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-r from-purple-900/90 to-purple-600/90 z-10"></div>
-        <img 
-          src="/api/placeholder/1000/1000" 
-          alt="Interior Design" 
-          className="object-cover w-full h-full"
-        />
-        <div className="absolute inset-0 flex flex-col justify-center px-12 z-20">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-            Empower Your Team with Our Employee Portal
-          </h1>
-          <p className="text-lg text-gray-200 mb-8">
-            Our Employee Portal streamlines task management, attendance tracking, and leave requests, ensuring your team stays organized and productive. Experience seamless communication and enhance performance with our user-friendly platform.
-          </p>
-          <div className="flex space-x-4">
-            <button className="px-6 py-3 bg-black text-white rounded-lg hover:bg-gray-900 transition-colors">
-              Get Started
-            </button>
-            <button className="px-6 py-3 border border-white text-white rounded-lg hover:bg-white/10 transition-colors">
-              Learn More
-            </button>
+        <div className="absolute inset-0 flex items-center justify-center z-20">
+          <div className="relative w-full h-full">
+            {slides.map((slide, index) => (
+              <div 
+                key={index}
+                className={`absolute inset-0 transition-transform duration-500 ease-in-out flex flex-col justify-center px-12 ${
+                  index === currentSlide 
+                    ? 'translate-x-0 opacity-100' 
+                    : index < currentSlide 
+                    ? '-translate-x-full opacity-0' 
+                    : 'translate-x-full opacity-0'
+                }`}
+              >
+                <div className="flex items-center">
+                  <div className="w-1/2 pr-8">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-6 text-white">
+                      {slide.title}
+                    </h1>
+                    <p className="text-lg text-gray-200 mb-8">
+                      {slide.description}
+                    </p>
+                  </div>
+                  <div className="w-1/2">
+                    <Player
+                      autoplay
+                      loop
+                      src={slide.animation}
+                      style={{ height: '300px', width: '300px' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
+        </div>
+        <div className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-30 flex space-x-4">
+          {slides.map((_, index) => (
+            <button 
+              key={index}
+              onClick={() => setCurrentSlide(index)}
+              className={`w-3 h-3 rounded-full ${
+                index === currentSlide ? 'bg-white' : 'bg-white/50'
+              }`}
+            />
+          ))}
         </div>
       </div>
 
@@ -67,10 +132,19 @@ const Login = () => {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
+            <div className="flex justify-center mb-4">
+              <Player
+                autoplay
+                loop
+                src={animationData}
+                style={{ height: '150px', width: '150px' }}
+              />
+            </div>
             <h2 className="text-3xl font-bold text-white">LogIn</h2>
             <p className="mt-2 text-gray-400">Welcome Back! Please enter your details.</p>
           </div>
 
+          {/* Rest of the login form remains the same */}
           {error && (
             <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-200">
               {error}
@@ -78,12 +152,14 @@ const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            {/* Form inputs remain the same as in previous version */}
             <div>
               <label className="block text-sm font-medium text-gray-300">Email</label>
               <input
                 type="email"
                 className="mt-1 block w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors"
                 placeholder="Enter your email"
+                value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
@@ -95,18 +171,20 @@ const Login = () => {
                 type="password"
                 className="mt-1 block w-full px-4 py-3 bg-gray-900/50 border border-gray-700 rounded-lg focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-colors"
                 placeholder="Enter your password"
+                value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
 
+            {/* Rest of the form remains the same */}
             <div className="flex items-center justify-between">
               <label className="flex items-center">
                 <input
                   type="checkbox"
                   className="w-4 h-4 rounded border-gray-700 bg-gray-900 text-purple-500 focus:ring-purple-500/20"
                 />
-                <span className="ml-2 text-sm text-gray-300">Remember me for 10 days</span>
+                <span className="ml-2 text-sm text-gray-300">Remember me for 30 days</span>
               </label>
               <a href="#" className="text-sm text-purple-400 hover:text-purple-300">
                 Forgot Password?
@@ -138,7 +216,7 @@ const Login = () => {
             </button>
 
             <p className="text-center text-sm text-gray-400">
-              Don't have a account?{' '}
+              Don't have an account?{' '}
               <a href="#" className="text-purple-400 hover:text-purple-300">
                 Sign up for free
               </a>
