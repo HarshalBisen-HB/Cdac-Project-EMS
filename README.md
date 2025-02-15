@@ -220,3 +220,12 @@ Complete Postman collection available at `/docs/api-collection.json`
 ## UI
 ![Screenshot 2025-02-11 032026](https://github.com/user-attachments/assets/de2d6aac-2326-4c07-8f00-860366b23d4d)
 
+![Screenshot 2025-02-11 033432](https://github.com/user-attachments/assets/bf31f0b3-9e37-488b-92ac-4d626fd070ce)
+![Screenshot 2025-02-11 033249](https://github.com/user-attachments/assets/37f3795e-956b-4933-ac35-86ae2117cceb)
+![Screenshot 2025-02-11 032637](https://github.com/user-attachments/assets/37bf7358-a82b-44d2-9969-ed56abb19aab)
+![Screenshot 2025-02-11 032520](https://github.com/user-attachments/assets/863d3055-dd5f-49c9-b220-738a8a12094a)
+![Screenshot 2025-02-11 032407](https://github.com/user-attachments/assets/d3a76f81-f096-483d-91e6-efb2033309e7)
+![Screenshot 2025-02-11 032313](https://github.com/user-attachments/assets/f8b3495a-ce33-4433-bedb-33e6566028f2)
+![Screenshot 2025-02-11 032116](https://github.com/user-attachments/assets/e1a835df-70dc-4851-a4c8-276c2a9f1207)
+![Screenshot 2025-02-11 032026](https://github.com/user-attachments/assets/3239c2fa-7f10-45d6-8b90-3705b4314589)
+
