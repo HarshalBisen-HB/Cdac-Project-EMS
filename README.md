@@ -218,7 +218,9 @@ Complete Postman collection available at `/docs/api-collection.json`
 - CORS configuration
 
 ## UI
+
 Deployed the frontend on vercel:- https://cdac-project-ems-managers-aqbvcev9q-harshs-projects-f2cd1ad8.vercel.app/login
+
 ![Screenshot 2025-02-11 032026](https://github.com/user-attachments/assets/de2d6aac-2326-4c07-8f00-860366b23d4d)
 ![Screenshot 2025-02-11 033432](https://github.com/user-attachments/assets/bf31f0b3-9e37-488b-92ac-4d626fd070ce)
 ![Screenshot 2025-02-11 033249](https://github.com/user-attachments/assets/37f3795e-956b-4933-ac35-86ae2117cceb)
