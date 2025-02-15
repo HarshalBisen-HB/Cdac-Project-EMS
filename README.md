@@ -217,14 +217,6 @@ Complete Postman collection available at `/docs/api-collection.json`
 - XSS protection
 - CORS configuration
 
-## Contributing
+## UI
+![Screenshot 2025-02-11 032026](https://github.com/user-attachments/assets/de2d6aac-2326-4c07-8f00-860366b23d4d)
 
-1. Fork repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
-
-## License
-
-MIT License
